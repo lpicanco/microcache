@@ -9,7 +9,7 @@ type cacheItem struct {
 // Cache struct
 type Cache struct {
 	items map[string]cacheItem
-	m     sync.RWMutex
+	mu    sync.RWMutex
 }
 
 // Return a new cache
@@ -18,23 +18,21 @@ func NewCache() Cache {
 }
 
 // Put an item to cache
-func (c Cache) Put(key string, value interface{}) {
-	c.m.Lock()
-
+func (c *Cache) Put(key string, value interface{}) {
+	c.mu.Lock()
 	c.items[key] = cacheItem{Data: value}
-
-	c.m.Unlock()
+	c.mu.Unlock()
 }
 
 // Get an item from cache
-func (c Cache) Get(key string) (value interface{}, found bool) {
-	c.m.RLock()
+func (c *Cache) Get(key string) (value interface{}, found bool) {
+	c.mu.RLock()
 	item, found := c.items[key]
 
 	if found {
 		value = item.Data
 	}
 
-	c.m.RUnlock()
+	c.mu.RUnlock()
 	return
 }

@@ -50,22 +50,3 @@ func TestNotFound(t *testing.T) {
 	}
 
 }
-
-// func TestConcurrency(t *testing.T) {
-// 	cache := NewCache()
-// 	key := "key"
-// 	expected_value := 1000
-// 	cache.Put(key, 0)
-
-// 	for i := 0; i < expected_value; i++ {
-// 		value, _ := cache.Get(key)
-// 		cache.Put(value)
-// 	}
-
-// 	structValue := struct {
-// 		key   int32
-// 		value string
-// 	}{
-// 		42, "answer",
-// 	}
-// }
