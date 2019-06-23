@@ -67,18 +67,15 @@ func BenchmarkSyncMapGet(b *testing.B) {
 }
 
 func BenchmarkGet(b *testing.B) {
-	b.StopTimer()
 	cache := NewCache()
 
-	for i := 0; i < b.N; i++ {
+	for i := 0; i < 100; i++ {
 		cache.Put(string(i), 42)
 	}
 
-	b.StartTimer()
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if _, ok := cache.Get(string(i)); !ok {
-			b.Fatal()
-		}
+		cache.Get(string(i))
 	}
 }
 
