@@ -109,6 +109,27 @@ func TestLRUCleanup(t *testing.T) {
 
 }
 
+func TestLRUInvalidate(t *testing.T) {
+	maxSize := 100
+	cache := NewLRUCache(Configuration{MaxSize: maxSize})
+
+	cache.Put(1, 1)
+	cache.Put(2, 2)
+	cache.Put(3, 3)
+
+	if found := cache.Invalidate(2); !found {
+		t.Errorf("Cache.Invalidate(2) == false")
+	}
+
+	if _, found := cache.Get(2); found {
+		t.Errorf("Cache.Get(2) == found")
+	}
+
+	if found := cache.Invalidate(20); found {
+		t.Errorf("Cache.Invalidate(20) == true")
+	}
+}
+
 func BenchmarkLRUConcurrent(b *testing.B) {
 	cache := NewLRUCache(DefaultConfiguration(10000))
 	defer cache.Close()
@@ -123,6 +144,14 @@ func BenchmarkLRUConcurrent(b *testing.B) {
 			cache.Put(i, i)
 			wg.Done()
 		}(i)
+
+		if i%10 == 3 {
+			wg.Add(1)
+			go func(i int) {
+				cache.Invalidate(i)
+				wg.Done()
+			}(i - 1)
+		}
 
 		go func(i int) {
 			cache.Get(i)

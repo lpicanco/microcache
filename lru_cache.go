@@ -25,6 +25,7 @@ type cacheItem struct {
 	listElement *list.Element
 	createdOn   int64
 	accessedOn  int64
+	deleted     bool
 }
 
 func (c *LRUCache) Put(key interface{}, value interface{}) {
@@ -47,6 +48,27 @@ func (c *LRUCache) Get(key interface{}) (value interface{}, found bool) {
 
 	value = item.data
 	c.promote(item)
+
+	return
+}
+
+func (c *LRUCache) Invalidate(key interface{}) (found bool) {
+	c.mu.RLock()
+	item, found := c.items[key]
+	c.mu.RUnlock()
+
+	if found {
+		c.mu.Lock()
+		delete(c.items, item.key)
+		item.deleted = true
+
+		if item.listElement != nil {
+			c.itemRank.Remove(item.listElement)
+		}
+
+		c.size--
+		c.mu.Unlock()
+	}
 
 	return
 }
@@ -78,6 +100,10 @@ func (c *LRUCache) promote(cacheItem *cacheItem) {
 
 func (c *LRUCache) doPromotions() {
 	for item := range c.promotions {
+		if item.deleted {
+			continue
+		}
+
 		if item.listElement == nil {
 			c.size++
 			item.listElement = c.itemRank.PushFront(item)
@@ -102,7 +128,9 @@ func (c *LRUCache) cleanup() {
 		}
 		c.itemRank.Remove(lastItem)
 		c.mu.Lock()
-		delete(c.items, lastItem.Value.(*cacheItem).key)
+		if lastItem.Value != nil {
+			delete(c.items, lastItem.Value.(*cacheItem).key)
+		}
 		c.mu.Unlock()
 		c.size--
 	}
