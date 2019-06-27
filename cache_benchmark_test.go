@@ -27,7 +27,7 @@ func BenchmarkSyncMapPut(b *testing.B) {
 
 func BenchmarkPut(b *testing.B) {
 	b.StopTimer()
-	cache := NewCache()
+	cache := NewCache(DefaultConfiguration(100))
 
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
@@ -67,7 +67,7 @@ func BenchmarkSyncMapGet(b *testing.B) {
 }
 
 func BenchmarkGet(b *testing.B) {
-	cache := NewCache()
+	cache := NewCache(DefaultConfiguration(100))
 
 	for i := 0; i < 100; i++ {
 		cache.Put(string(i), 42)
@@ -80,7 +80,7 @@ func BenchmarkGet(b *testing.B) {
 }
 
 func BenchmarkPutGetConcurrent(b *testing.B) {
-	cache := NewCache()
+	cache := NewCache(DefaultConfiguration(100))
 
 	b.RunParallel(func(pb *testing.PB) {
 		i := 0

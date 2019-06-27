@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-type LRUCache struct {
+type lruCache struct {
 	items             map[interface{}]*cacheItem
 	itemRank          *list.List
 	mu                sync.RWMutex
@@ -28,7 +28,7 @@ type cacheItem struct {
 	deleted     bool
 }
 
-func (c *LRUCache) Put(key interface{}, value interface{}) {
+func (c *lruCache) Put(key interface{}, value interface{}) {
 	item := &cacheItem{key: key, data: value, createdOn: getCurrentTimeStamp(), accessedOn: getCurrentTimeStamp()}
 	c.mu.Lock()
 	c.items[key] = item
@@ -36,8 +36,7 @@ func (c *LRUCache) Put(key interface{}, value interface{}) {
 	c.promote(item)
 }
 
-// Get an item from cache
-func (c *LRUCache) Get(key interface{}) (value interface{}, found bool) {
+func (c *lruCache) Get(key interface{}) (value interface{}, found bool) {
 	c.mu.RLock()
 	item, found := c.items[key]
 	c.mu.RUnlock()
@@ -52,7 +51,7 @@ func (c *LRUCache) Get(key interface{}) (value interface{}, found bool) {
 	return
 }
 
-func (c *LRUCache) Invalidate(key interface{}) (found bool) {
+func (c *lruCache) Invalidate(key interface{}) (found bool) {
 	c.mu.RLock()
 	item, found := c.items[key]
 	c.mu.RUnlock()
@@ -73,16 +72,16 @@ func (c *LRUCache) Invalidate(key interface{}) (found bool) {
 	return
 }
 
-func (c *LRUCache) Close() {
+func (c *lruCache) Close() {
 	close(c.promotions)
 }
 
-func (c *LRUCache) Len() int {
+func (c *lruCache) Len() int {
 	return c.size
 }
 
-func NewLRUCache(config Configuration) *LRUCache {
-	lruCache := &LRUCache{
+func newLRUCache(config Configuration) *lruCache {
+	lruCache := &lruCache{
 		itemRank:     list.New(),
 		items:        make(map[interface{}]*cacheItem),
 		promotions:   make(chan *cacheItem, 1000),
@@ -94,11 +93,11 @@ func NewLRUCache(config Configuration) *LRUCache {
 	return lruCache
 }
 
-func (c *LRUCache) promote(cacheItem *cacheItem) {
+func (c *lruCache) promote(cacheItem *cacheItem) {
 	c.promotions <- cacheItem
 }
 
-func (c *LRUCache) doPromotions() {
+func (c *lruCache) doPromotions() {
 	for item := range c.promotions {
 		if item.deleted {
 			continue
@@ -120,7 +119,7 @@ func (c *LRUCache) doPromotions() {
 	}
 }
 
-func (c *LRUCache) cleanup() {
+func (c *lruCache) cleanup() {
 	for i := 0; i < c.cleanupCount; i++ {
 		lastItem := c.itemRank.Back()
 		if lastItem == nil {

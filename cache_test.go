@@ -3,7 +3,7 @@ package microcache
 import "testing"
 
 func TestPutGet(t *testing.T) {
-	cache := NewCache()
+	cache := NewCache(DefaultConfiguration(100))
 
 	structValue := struct {
 		key   int32
@@ -38,7 +38,7 @@ func TestPutGet(t *testing.T) {
 }
 
 func TestNotFound(t *testing.T) {
-	cache := NewCache()
+	cache := NewCache(DefaultConfiguration(100))
 	got, found := cache.Get("key")
 
 	if found {
