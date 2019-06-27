@@ -11,6 +11,7 @@ type lruCache struct {
 	itemRank          *list.List
 	mu                sync.RWMutex
 	promotions        chan *cacheItem
+	deletions		  chan *cacheItem
 	maxSize           int
 	size              int
 	expireAfterWrite  time.Duration
@@ -25,7 +26,6 @@ type cacheItem struct {
 	listElement *list.Element
 	createdOn   int64
 	accessedOn  int64
-	deleted     bool
 }
 
 func (c *lruCache) Put(key interface{}, value interface{}) {
@@ -59,14 +59,9 @@ func (c *lruCache) Invalidate(key interface{}) (found bool) {
 	if found {
 		c.mu.Lock()
 		delete(c.items, item.key)
-		item.deleted = true
-
-		if item.listElement != nil {
-			c.itemRank.Remove(item.listElement)
-		}
-
-		c.size--
 		c.mu.Unlock()
+
+		c.deletions <- item
 	}
 
 	return
@@ -77,6 +72,8 @@ func (c *lruCache) Close() {
 }
 
 func (c *lruCache) Len() int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return c.size
 }
 
@@ -85,6 +82,7 @@ func newLRUCache(config Configuration) *lruCache {
 		itemRank:     list.New(),
 		items:        make(map[interface{}]*cacheItem),
 		promotions:   make(chan *cacheItem, 1000),
+		deletions: 	  make(chan *cacheItem, 1000),
 		maxSize:      config.MaxSize,
 		cleanupCount: config.CleanupCount,
 	}
@@ -98,24 +96,35 @@ func (c *lruCache) promote(cacheItem *cacheItem) {
 }
 
 func (c *lruCache) doPromotions() {
-	for item := range c.promotions {
-		if item.deleted {
-			continue
-		}
-
-		if item.listElement == nil {
-			c.size++
-			item.listElement = c.itemRank.PushFront(item)
-
-			if c.size > c.maxSize {
-				c.cleanup()
+	for {
+		select {
+		case item, ok := <- c.promotions:
+			if !ok {
+				break
+			}
+	
+			if item.listElement == nil {
+				c.size++
+				item.listElement = c.itemRank.PushFront(item)
+	
+				if c.size > c.maxSize {
+					c.cleanup()
+				}
+	
+				continue
+			}
+	
+			item.touch()
+			c.itemRank.MoveToFront(item.listElement)
+	
+		case item := <- c.deletions:
+			if item.listElement == nil {
+				continue
 			}
 
-			continue
+			c.itemRank.Remove(item.listElement)
+			c.size--
 		}
-
-		item.touch()
-		c.itemRank.MoveToFront(item.listElement)
 	}
 }
 
@@ -127,18 +136,16 @@ func (c *lruCache) cleanup() {
 		}
 		c.itemRank.Remove(lastItem)
 		c.mu.Lock()
-		if lastItem.Value != nil {
-			delete(c.items, lastItem.Value.(*cacheItem).key)
-		}
-		c.mu.Unlock()
+		delete(c.items, lastItem.Value.(*cacheItem).key)
 		c.size--
+		c.mu.Unlock()		
 	}
 }
 
 func (ci *cacheItem) touch() {
-	// ci.mu.Lock()
+	ci.mu.Lock()
 	ci.accessedOn = getCurrentTimeStamp()
-	// ci.mu.Unlock()
+	ci.mu.Unlock()
 }
 
 func getCurrentTimeStamp() int64 {
