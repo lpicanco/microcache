@@ -1,13 +1,14 @@
-package microcache
+package lru
 
 import (
 	"sync"
 	"testing"
 	"time"
+	"github.com/lpicanco/micro-cache/configuration"
 )
-
+ 
 func TestLRUPutGet(t *testing.T) {
-	cache := newLRUCache(DefaultConfiguration(100))
+	cache := New(configuration.DefaultConfiguration(100))
 
 	structValue := struct {
 		key   int32
@@ -42,7 +43,7 @@ func TestLRUPutGet(t *testing.T) {
 }
 
 func TestLRUPutTwice(t *testing.T) {
-	cache := newLRUCache(DefaultConfiguration(100))
+	cache := New(configuration.DefaultConfiguration(100))
 
 	cache.Put(1, 1)
 	cache.Put(1, 2)
@@ -57,7 +58,7 @@ func TestLRUPutTwice(t *testing.T) {
 }
 
 func TestLRUNotFound(t *testing.T) {
-	cache := newLRUCache(DefaultConfiguration(100))
+	cache := New(configuration.DefaultConfiguration(100))
 	got, found := cache.Get("key")
 
 	if found {
@@ -83,7 +84,7 @@ func TestLRUSizeEviction(t *testing.T) {
 	}
 
 	maxSize := 5
-	cache := newLRUCache(Configuration{MaxSize: maxSize, CleanupCount: 1})
+	cache := New(configuration.Configuration{MaxSize: maxSize, CleanupCount: 1})
 
 	for _, i := range cases {
 		cache.Put(i.in, i)
@@ -109,7 +110,7 @@ func TestLRUCleanup(t *testing.T) {
 	maxSize := 100
 	cleanUpCount := 25
 	want := maxSize - cleanUpCount + 1
-	cache := newLRUCache(Configuration{MaxSize: maxSize, CleanupCount: cleanUpCount})
+	cache := New(configuration.Configuration{MaxSize: maxSize, CleanupCount: cleanUpCount})
 
 	for i := 0; i <= maxSize; i++ {
 		cache.Put(i, i)
@@ -124,7 +125,7 @@ func TestLRUCleanup(t *testing.T) {
 
 func TestLRUInvalidate(t *testing.T) {
 	maxSize := 100
-	cache := newLRUCache(Configuration{MaxSize: maxSize})
+	cache := New(configuration.Configuration{MaxSize: maxSize})
 
 	cache.Put(1, 1)
 	cache.Put(2, 2)
@@ -144,7 +145,7 @@ func TestLRUInvalidate(t *testing.T) {
 }
 
 func BenchmarkLRUConcurrent(b *testing.B) {
-	cache := newLRUCache(DefaultConfiguration(10000))
+	cache := New(configuration.DefaultConfiguration(10000))
 	defer cache.Close()
 
 	var wg sync.WaitGroup
@@ -177,7 +178,7 @@ func BenchmarkLRUConcurrent(b *testing.B) {
 
 func BenchmarkLRUGetSequencial(b *testing.B) {
 	maxSize := 10000
-	cache := newLRUCache(DefaultConfiguration(maxSize))
+	cache := New(configuration.DefaultConfiguration(maxSize))
 	defer cache.Close()
 
 	var wg sync.WaitGroup

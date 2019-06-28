@@ -1,9 +1,9 @@
-package microcache
+package configuration
 
 import "time"
 
 const cleanUpFactor = 0.01
-
+ 
 // Configuration for micro-cache
 type Configuration struct {
 	// Max size of the cache

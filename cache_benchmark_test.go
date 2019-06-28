@@ -4,6 +4,7 @@ import (
 	"sync"
 	"testing"
 	"github.com/golang/groupcache/lru"
+	"github.com/lpicanco/micro-cache/configuration"
 )
 
 func BenchmarkMapPut(b *testing.B) {
@@ -39,7 +40,7 @@ func BenchmarkGroupCachePut(b *testing.B) {
 }
 
 func BenchmarkPut(b *testing.B) {
-	cache := NewCache(DefaultConfiguration(100))
+	cache := New(configuration.DefaultConfiguration(100))
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -79,7 +80,7 @@ func BenchmarkSyncMapGet(b *testing.B) {
 }
 
 func BenchmarkGet(b *testing.B) {
-	cache := NewCache(DefaultConfiguration(100))
+	cache := New(configuration.DefaultConfiguration(100))
 
 	for i := 0; i < 100; i++ {
 		cache.Put(string(i), 42)
@@ -92,7 +93,7 @@ func BenchmarkGet(b *testing.B) {
 }
 
 func BenchmarkPutGetConcurrent(b *testing.B) {
-	cache := NewCache(DefaultConfiguration(100))
+	cache := New(configuration.DefaultConfiguration(100))
 
 	b.RunParallel(func(pb *testing.PB) {
 		i := 0
@@ -132,9 +133,9 @@ func BenchmarkGroupCacheConcurrent(b *testing.B) {
 		}
 
 		go func(i int) {
-			mu.RLock()
+			mu.Lock()
 			cache.Get(i)
-			mu.RUnlock()
+			mu.Unlock()
 			wg.Done()
 		}(i)
 	}

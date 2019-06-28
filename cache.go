@@ -1,6 +1,11 @@
 // Package microcache is the core package
 package microcache
 
+import(
+	"github.com/lpicanco/micro-cache/configuration"
+	"github.com/lpicanco/micro-cache/lru"
+)
+
 // Cache interface
 type Cache interface {
 	// Put a item to the cache
@@ -15,7 +20,8 @@ type Cache interface {
 	Close()
 }
 
-// NewCache returns a new cache
-func NewCache(config Configuration) Cache {
-	return newLRUCache(config)
+// New returns a new cache
+func New(config configuration.Configuration) Cache {
+	return lru.New(config)
 }
+ 

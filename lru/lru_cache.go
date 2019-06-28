@@ -1,12 +1,14 @@
-package microcache
+package lru
 
 import (
 	"container/list"
 	"sync"
 	"time"
+	"github.com/lpicanco/micro-cache/configuration"
 )
 
-type lruCache struct {
+// Cache structure
+type Cache struct {
 	items             map[interface{}]*cacheItem
 	itemRank          *list.List
 	mu                sync.RWMutex
@@ -15,7 +17,7 @@ type lruCache struct {
 	maxSize           int
 	size              int
 	expireAfterWrite  time.Duration
-	expireAfterAccess time.Duration
+	expireAfterAccess time.Duration 
 	cleanupCount      int
 }
 
@@ -28,7 +30,8 @@ type cacheItem struct {
 	accessedOn  int64
 }
 
-func (c *lruCache) Put(key interface{}, value interface{}) {
+// Put a item to the cache
+func (c *Cache) Put(key interface{}, value interface{}) {
 	item, found := c.getCacheItem(key)
 
 	if found {
@@ -46,7 +49,8 @@ func (c *lruCache) Put(key interface{}, value interface{}) {
 	c.promote(item)
 }
 
-func (c *lruCache) Get(key interface{}) (value interface{}, found bool) {
+// Get a item from the cache
+func (c *Cache) Get(key interface{}) (value interface{}, found bool) {
 	item, found := c.getCacheItem(key)
 
 	if !found {
@@ -61,7 +65,8 @@ func (c *lruCache) Get(key interface{}) (value interface{}, found bool) {
 	return
 }
 
-func (c *lruCache) Invalidate(key interface{}) (found bool) {
+// Invalidate remove a item from the cache.
+func (c *Cache) Invalidate(key interface{}) (found bool) {
 	c.mu.RLock()
 	item, found := c.items[key]
 	c.mu.RUnlock()
@@ -77,19 +82,22 @@ func (c *lruCache) Invalidate(key interface{}) (found bool) {
 	return
 }
 
-func (c *lruCache) Close() {
+// Close the cache
+func (c *Cache) Close() {
 	close(c.promotions)
 	close(c.deletions)
 }
 
-func (c *lruCache) Len() int {
+// Len of the cache
+func (c *Cache) Len() int {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return len(c.items)
 }
 
-func newLRUCache(config Configuration) *lruCache {
-	lruCache := &lruCache{
+// New returns a new LRU Cache
+func New(config configuration.Configuration) *Cache {
+	Cache := &Cache{
 		itemRank:     list.New(),
 		items:        make(map[interface{}]*cacheItem),
 		promotions:   make(chan *cacheItem, 1000),
@@ -98,22 +106,22 @@ func newLRUCache(config Configuration) *lruCache {
 		cleanupCount: config.CleanupCount,
 	}
 
-	go lruCache.doPromotions()
-	return lruCache
+	go Cache.doPromotions()
+	return Cache
 }
 
-func (c *lruCache) getCacheItem(key interface{}) (cacheItem *cacheItem, found bool) {
+func (c *Cache) getCacheItem(key interface{}) (cacheItem *cacheItem, found bool) {
 	c.mu.RLock()
 	cacheItem, found = c.items[key]
 	c.mu.RUnlock()
 	return
 }
 
-func (c *lruCache) promote(cacheItem *cacheItem) {
+func (c *Cache) promote(cacheItem *cacheItem) {
 	c.promotions <- cacheItem
 }
 
-func (c *lruCache) doPromotions() {
+func (c *Cache) doPromotions() {
 	for {
 		select {
 		case item, ok := <-c.promotions:
@@ -150,7 +158,7 @@ func (c *lruCache) doPromotions() {
 	}
 }
 
-func (c *lruCache) cleanup() {
+func (c *Cache) cleanup() {
 	for i := 0; i < c.cleanupCount; i++ {
 		lastItem := c.itemRank.Back()
 		if lastItem == nil {

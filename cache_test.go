@@ -1,9 +1,12 @@
 package microcache
 
-import "testing"
+import (
+	"testing"
+	"github.com/lpicanco/micro-cache/configuration"
+)
 
 func TestPutGet(t *testing.T) {
-	cache := NewCache(DefaultConfiguration(100))
+	cache := New(configuration.DefaultConfiguration(100))
 
 	structValue := struct {
 		key   int32
@@ -38,7 +41,7 @@ func TestPutGet(t *testing.T) {
 }
 
 func TestNotFound(t *testing.T) {
-	cache := NewCache(DefaultConfiguration(100))
+	cache := New(configuration.DefaultConfiguration(100))
 	got, found := cache.Get("key")
 
 	if found {
