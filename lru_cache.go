@@ -11,7 +11,7 @@ type lruCache struct {
 	itemRank          *list.List
 	mu                sync.RWMutex
 	promotions        chan *cacheItem
-	deletions		  chan *cacheItem
+	deletions         chan *cacheItem
 	maxSize           int
 	size              int
 	expireAfterWrite  time.Duration
@@ -29,7 +29,15 @@ type cacheItem struct {
 }
 
 func (c *lruCache) Put(key interface{}, value interface{}) {
-	item := &cacheItem{key: key, data: value, createdOn: getCurrentTimeStamp(), accessedOn: getCurrentTimeStamp()}
+	item, found := c.getCacheItem(key)
+
+	if found {
+		item.data = value
+		c.promote(item)
+		return
+	}
+
+	item = &cacheItem{key: key, data: value, createdOn: getCurrentTimeStamp(), accessedOn: getCurrentTimeStamp()}
 	c.mu.Lock()
 	c.items[key] = item
 	c.mu.Unlock()
@@ -37,9 +45,7 @@ func (c *lruCache) Put(key interface{}, value interface{}) {
 }
 
 func (c *lruCache) Get(key interface{}) (value interface{}, found bool) {
-	c.mu.RLock()
-	item, found := c.items[key]
-	c.mu.RUnlock()
+	item, found := c.getCacheItem(key)
 
 	if !found {
 		return
@@ -69,12 +75,13 @@ func (c *lruCache) Invalidate(key interface{}) (found bool) {
 
 func (c *lruCache) Close() {
 	close(c.promotions)
+	close(c.deletions)
 }
 
 func (c *lruCache) Len() int {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.size
+	return len(c.items)
 }
 
 func newLRUCache(config Configuration) *lruCache {
@@ -82,13 +89,20 @@ func newLRUCache(config Configuration) *lruCache {
 		itemRank:     list.New(),
 		items:        make(map[interface{}]*cacheItem),
 		promotions:   make(chan *cacheItem, 1000),
-		deletions: 	  make(chan *cacheItem, 1000),
+		deletions:    make(chan *cacheItem, 1000),
 		maxSize:      config.MaxSize,
 		cleanupCount: config.CleanupCount,
 	}
 
 	go lruCache.doPromotions()
 	return lruCache
+}
+
+func (c *lruCache) getCacheItem(key interface{}) (cacheItem *cacheItem, found bool) {
+	c.mu.RLock()
+	cacheItem, found = c.items[key]
+	c.mu.RUnlock()
+	return
 }
 
 func (c *lruCache) promote(cacheItem *cacheItem) {
@@ -98,26 +112,30 @@ func (c *lruCache) promote(cacheItem *cacheItem) {
 func (c *lruCache) doPromotions() {
 	for {
 		select {
-		case item, ok := <- c.promotions:
+		case item, ok := <-c.promotions:
 			if !ok {
-				break
+				return
 			}
-	
+
 			if item.listElement == nil {
 				c.size++
 				item.listElement = c.itemRank.PushFront(item)
-	
+
 				if c.size > c.maxSize {
 					c.cleanup()
 				}
-	
+
 				continue
 			}
-	
+
 			item.touch()
 			c.itemRank.MoveToFront(item.listElement)
-	
-		case item := <- c.deletions:
+
+		case item, ok := <-c.deletions:
+			if !ok {
+				return
+			}
+
 			if item.listElement == nil {
 				continue
 			}
@@ -138,7 +156,7 @@ func (c *lruCache) cleanup() {
 		c.mu.Lock()
 		delete(c.items, lastItem.Value.(*cacheItem).key)
 		c.size--
-		c.mu.Unlock()		
+		c.mu.Unlock()
 	}
 }
 

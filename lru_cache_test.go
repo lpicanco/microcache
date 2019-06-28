@@ -41,6 +41,21 @@ func TestLRUPutGet(t *testing.T) {
 	}
 }
 
+func TestLRUPutTwice(t *testing.T) {
+	cache := newLRUCache(DefaultConfiguration(100))
+
+	cache.Put(1, 1)
+	cache.Put(1, 2)
+
+	if item, _ := cache.Get(1); item != 2 {
+		t.Errorf("Cache.Get(1) == %v, want %v", item, 2)
+	}
+
+	if cache.Len() != 1 {
+		t.Errorf("Cache.Len() == %v, want %v", cache.Len(), 1)
+	}
+}
+
 func TestLRUNotFound(t *testing.T) {
 	cache := newLRUCache(DefaultConfiguration(100))
 	got, found := cache.Get("key")
@@ -72,7 +87,6 @@ func TestLRUSizeEviction(t *testing.T) {
 
 	for _, i := range cases {
 		cache.Put(i.in, i)
-		<-time.After(time.Millisecond * 100)
 	}
 
 	for _, c := range cases {
@@ -106,7 +120,6 @@ func TestLRUCleanup(t *testing.T) {
 	if cache.Len() != want {
 		t.Errorf("Cache.Len() == %v. want %v", cache.Len(), want)
 	}
-
 }
 
 func TestLRUInvalidate(t *testing.T) {
@@ -163,7 +176,7 @@ func BenchmarkLRUConcurrent(b *testing.B) {
 }
 
 func BenchmarkLRUGetSequencial(b *testing.B) {
-	maxSize := 100000
+	maxSize := 10000
 	cache := newLRUCache(DefaultConfiguration(maxSize))
 	defer cache.Close()
 
