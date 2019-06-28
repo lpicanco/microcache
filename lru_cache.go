@@ -32,7 +32,9 @@ func (c *lruCache) Put(key interface{}, value interface{}) {
 	item, found := c.getCacheItem(key)
 
 	if found {
+		item.mu.Lock()
 		item.data = value
+		item.mu.Unlock()
 		c.promote(item)
 		return
 	}
@@ -51,7 +53,9 @@ func (c *lruCache) Get(key interface{}) (value interface{}, found bool) {
 		return
 	}
 
+	item.mu.RLock()
 	value = item.data
+	item.mu.RUnlock()
 	c.promote(item)
 
 	return
