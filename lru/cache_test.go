@@ -4,10 +4,11 @@ import (
 	"sync"
 	"testing"
 	"time"
+
 	"github.com/lpicanco/micro-cache/configuration"
 )
- 
-func TestLRUPutGet(t *testing.T) {
+
+func TestPutGet(t *testing.T) {
 	cache := New(configuration.DefaultConfiguration(100))
 
 	structValue := struct {
@@ -42,7 +43,7 @@ func TestLRUPutGet(t *testing.T) {
 	}
 }
 
-func TestLRUPutTwice(t *testing.T) {
+func TestPutTwice(t *testing.T) {
 	cache := New(configuration.DefaultConfiguration(100))
 
 	cache.Put(1, 1)
@@ -57,7 +58,7 @@ func TestLRUPutTwice(t *testing.T) {
 	}
 }
 
-func TestLRUNotFound(t *testing.T) {
+func TestNotFound(t *testing.T) {
 	cache := New(configuration.DefaultConfiguration(100))
 	got, found := cache.Get("key")
 
@@ -71,6 +72,57 @@ func TestLRUNotFound(t *testing.T) {
 
 }
 
+func TestExpiredAfterWrite(t *testing.T) {
+	expireAfterWrite := time.Millisecond * 10
+	cache := New(configuration.Configuration{MaxSize: 100, ExpireAfterWrite: expireAfterWrite})
+	cache.Put(1, 1)
+
+	<-time.After(expireAfterWrite - time.Millisecond)
+	if _, found := cache.Get(1); !found {
+		t.Error("Cache.Get(key) returned false")
+	}
+
+	<-time.After(time.Millisecond)
+
+	got, found := cache.Get(1)
+
+	if found {
+		t.Error("Cache.Get(key) returned true")
+	}
+
+	if got != nil {
+		t.Errorf("Cache.Get(key) == %v, want %v", got, nil)
+	}
+}
+
+func TestExpiredAfterAccess(t *testing.T) {
+	expireAfterAccess := time.Millisecond * 10
+	cache := New(configuration.Configuration{MaxSize: 100, ExpireAfterAccess: expireAfterAccess, ExpireAfterWrite: 1 * time.Second})
+	key := 1
+	cache.Put(key, 1)
+
+	<-time.After(expireAfterAccess - time.Millisecond)
+	if _, found := cache.Get(key); !found {
+		t.Error("Cache.Get(key) returned false")
+	}
+
+	<-time.After(expireAfterAccess - time.Millisecond)
+	if _, found := cache.Get(key); !found {
+		t.Error("Cache.Get(key) returned false")
+	}
+
+	<-time.After(expireAfterAccess)
+
+	got, found := cache.Get(1)
+
+	if found {
+		t.Error("Cache.Get(key) returned true")
+	}
+
+	if got != nil {
+		t.Errorf("Cache.Get(key) == %v, want %v", got, nil)
+	}
+}
 func TestLRUSizeEviction(t *testing.T) {
 	cases := []struct {
 		in   int

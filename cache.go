@@ -1,7 +1,7 @@
 // Package microcache is the core package
 package microcache
 
-import(
+import (
 	"github.com/lpicanco/micro-cache/configuration"
 	"github.com/lpicanco/micro-cache/lru"
 )
@@ -24,4 +24,3 @@ type Cache interface {
 func New(config configuration.Configuration) Cache {
 	return lru.New(config)
 }
- 

@@ -4,6 +4,7 @@ import (
 	"container/list"
 	"sync"
 	"time"
+
 	"github.com/lpicanco/micro-cache/configuration"
 )
 
@@ -17,7 +18,7 @@ type Cache struct {
 	maxSize           int
 	size              int
 	expireAfterWrite  time.Duration
-	expireAfterAccess time.Duration 
+	expireAfterAccess time.Duration
 	cleanupCount      int
 }
 
@@ -57,6 +58,11 @@ func (c *Cache) Get(key interface{}) (value interface{}, found bool) {
 		return
 	}
 
+	if item.expired(c.expireAfterWrite, c.expireAfterAccess) {
+		c.invalidate(item)
+		return nil, false
+	}
+
 	item.mu.RLock()
 	value = item.data
 	item.mu.RUnlock()
@@ -72,11 +78,7 @@ func (c *Cache) Invalidate(key interface{}) (found bool) {
 	c.mu.RUnlock()
 
 	if found {
-		c.mu.Lock()
-		delete(c.items, item.key)
-		c.mu.Unlock()
-
-		c.deletions <- item
+		c.invalidate(item)
 	}
 
 	return
@@ -98,12 +100,14 @@ func (c *Cache) Len() int {
 // New returns a new LRU Cache
 func New(config configuration.Configuration) *Cache {
 	Cache := &Cache{
-		itemRank:     list.New(),
-		items:        make(map[interface{}]*cacheItem),
-		promotions:   make(chan *cacheItem, 1000),
-		deletions:    make(chan *cacheItem, 1000),
-		maxSize:      config.MaxSize,
-		cleanupCount: config.CleanupCount,
+		itemRank:          list.New(),
+		items:             make(map[interface{}]*cacheItem),
+		promotions:        make(chan *cacheItem, 1000),
+		deletions:         make(chan *cacheItem, 1000),
+		maxSize:           config.MaxSize,
+		cleanupCount:      config.CleanupCount,
+		expireAfterWrite:  config.ExpireAfterWrite,
+		expireAfterAccess: config.ExpireAfterAccess,
 	}
 
 	go Cache.doPromotions()
@@ -115,6 +119,14 @@ func (c *Cache) getCacheItem(key interface{}) (cacheItem *cacheItem, found bool)
 	cacheItem, found = c.items[key]
 	c.mu.RUnlock()
 	return
+}
+
+func (c *Cache) invalidate(item *cacheItem) {
+	c.mu.Lock()
+	delete(c.items, item.key)
+	c.mu.Unlock()
+
+	c.deletions <- item
 }
 
 func (c *Cache) promote(cacheItem *cacheItem) {
@@ -176,6 +188,24 @@ func (ci *cacheItem) touch() {
 	ci.mu.Lock()
 	ci.accessedOn = getCurrentTimeStamp()
 	ci.mu.Unlock()
+}
+
+func (ci *cacheItem) expired(expireAfterWrite time.Duration, expireAfterAccess time.Duration) bool {
+	if expireAfterWrite > 0 && getCurrentTimeStamp()-ci.createdOn >= expireAfterWrite.Nanoseconds() {
+		return true
+	}
+
+	if expireAfterAccess > 0 {
+		ci.mu.RLock()
+		accessedOn := ci.accessedOn
+		ci.mu.RUnlock()
+
+		if getCurrentTimeStamp()-accessedOn >= expireAfterAccess.Nanoseconds() {
+			return true
+		}
+	}
+
+	return false
 }
 
 func getCurrentTimeStamp() int64 {
