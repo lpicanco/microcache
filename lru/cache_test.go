@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lpicanco/micro-cache/configuration"
+	"github.com/lpicanco/microcache/configuration"
 )
 
 func TestPutGet(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lpicanco/micro-cache/configuration"
+	"github.com/lpicanco/microcache/configuration"
 )
 
 // Cache structure

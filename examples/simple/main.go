@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 
-	microcache "github.com/lpicanco/micro-cache"
-	"github.com/lpicanco/micro-cache/configuration"
+	"github.com/lpicanco/microcache"
+	"github.com/lpicanco/microcache/configuration"
 )
 
 func main() {
@@ -15,4 +15,8 @@ func main() {
 	if found {
 		fmt.Printf("Value: %v\n", value)
 	}
+
+	fmt.Printf("Cache len: %v\n", cache.Len())
+
+	cache.Invalidate(42)
 }

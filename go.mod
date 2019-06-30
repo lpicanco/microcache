@@ -1,4 +1,4 @@
-module github.com/lpicanco/micro-cache
+module github.com/lpicanco/microcache
 
 go 1.12
 

@@ -4,7 +4,7 @@ import "time"
 
 const cleanUpFactor = 0.01
  
-// Configuration for micro-cache
+// Configuration for microcache
 type Configuration struct {
 	// Max size of the cache
 	MaxSize int

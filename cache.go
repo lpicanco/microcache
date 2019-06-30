@@ -2,8 +2,8 @@
 package microcache
 
 import (
-	"github.com/lpicanco/micro-cache/configuration"
-	"github.com/lpicanco/micro-cache/lru"
+	"github.com/lpicanco/microcache/configuration"
+	"github.com/lpicanco/microcache/lru"
 )
 
 // Cache interface
