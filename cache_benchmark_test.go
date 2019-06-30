@@ -3,6 +3,7 @@ package microcache
 import (
 	"sync"
 	"testing"
+
 	"github.com/golang/groupcache/lru"
 	"github.com/lpicanco/microcache/configuration"
 )

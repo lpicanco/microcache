@@ -2,6 +2,7 @@ package microcache
 
 import (
 	"testing"
+
 	"github.com/lpicanco/microcache/configuration"
 )
 
